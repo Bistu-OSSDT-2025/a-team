@@ -1,0 +1,1190 @@
+import javax.swing.*;
+import javax.swing.border.Border;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+public class LibrarySystemGUI extends JFrame {
+    private Library library;
+    private CardLayout cardLayout;
+    private JPanel mainPanel;
+
+    // 登录面板组件
+    private JComboBox<String> userTypeComboBox;
+    private JTextField idField;
+    private JPasswordField passwordField;
+    private JLabel statusLabel;
+    private JProgressBar progressBar;
+
+    // 菜单项（用于权限控制）
+    private JMenuItem addBookMenuItem, removeBookMenuItem, registerBorrowerMenuItem;
+    private JMenuItem listAllBooksMenuItem, listAllBorrowersMenuItem, checkBorrowerBooksMenuItem;
+    private JMenuItem checkBookStatusMenuItem, manageExchangeItemsMenuItem, setPointsMenuItem;
+    private JMenuItem borrowBookMenuItem, returnBookMenuItem, myBorrowedBooksMenuItem;
+    private JMenuItem myPointsMenuItem, exchangePointsMenuItem;
+
+    // 当前用户信息
+    private String currentUserId;
+    private boolean isAdmin;
+
+    // 定义颜色方案
+    private final Color PRIMARY_COLOR = new Color(22, 93, 255); // 主色调：蓝色
+    private final Color SECONDARY_COLOR = new Color(76, 175, 80); // 成功色：绿色
+    private final Color ERROR_COLOR = new Color(244, 67, 54); // 错误色：红色
+    private final Color WARNING_COLOR = new Color(255, 152, 0); // 警告色：橙色
+    private final Color BACKGROUND_COLOR = new Color(245, 245, 245); // 背景色
+    private final Color PANEL_BACKGROUND = new Color(255, 255, 255); // 面板背景色
+    private final Color TEXT_COLOR = new Color(33, 33, 33); // 文本色
+    private final Color TABLE_HEADER_COLOR = new Color(230, 230, 230); // 表格表头颜色
+    private final Color SHADOW_COLOR = new Color(0, 0, 0, 30); // 阴影颜色
+
+    public LibrarySystemGUI() {
+        library = new Library();
+        cardLayout = new CardLayout();
+        mainPanel = new JPanel(cardLayout);
+
+        // 初始化菜单项
+        initMenuItems();
+
+        // 设置全局字体
+        UIManager.put("Label.font", new Font("Microsoft YaHei", Font.PLAIN, 14));
+        UIManager.put("Button.font", new Font("Microsoft YaHei", Font.PLAIN, 14));
+        UIManager.put("TextField.font", new Font("Microsoft YaHei", Font.PLAIN, 14));
+        UIManager.put("PasswordField.font", new Font("Microsoft YaHei", Font.PLAIN, 14));
+        UIManager.put("Table.font", new Font("Microsoft YaHei", Font.PLAIN, 14));
+        UIManager.put("TableHeader.font", new Font("Microsoft YaHei", Font.BOLD, 14));
+
+        initUI();
+        initLibraryData();
+    }
+
+    // 初始化菜单项
+    private void initMenuItems() {
+        addBookMenuItem = new JMenuItem("添加图书");
+        removeBookMenuItem = new JMenuItem("移除图书");
+        registerBorrowerMenuItem = new JMenuItem("注册借阅者");
+        listAllBooksMenuItem = new JMenuItem("查看所有图书");
+        listAllBorrowersMenuItem = new JMenuItem("查看所有借阅者");
+        checkBorrowerBooksMenuItem = new JMenuItem("查看借阅者借阅情况");
+        checkBookStatusMenuItem = new JMenuItem("查看图书借阅情况");
+        manageExchangeItemsMenuItem = new JMenuItem("管理积分兑换物品");
+        setPointsMenuItem = new JMenuItem("设置借阅积分规则");
+        borrowBookMenuItem = new JMenuItem("借阅图书");
+        returnBookMenuItem = new JMenuItem("归还图书");
+        myBorrowedBooksMenuItem = new JMenuItem("查看我的借阅情况");
+        myPointsMenuItem = new JMenuItem("查看我的积分");
+        exchangePointsMenuItem = new JMenuItem("积分兑换");
+
+        // 添加菜单项事件监听器
+        addBookMenuItem.addActionListener(e -> showAddBookDialog());
+        removeBookMenuItem.addActionListener(e -> showRemoveBookDialog());
+        registerBorrowerMenuItem.addActionListener(e -> showRegisterBorrowerDialog());
+        listAllBooksMenuItem.addActionListener(e -> showAllBooks());
+        listAllBorrowersMenuItem.addActionListener(e -> showAllBorrowers());
+        checkBorrowerBooksMenuItem.addActionListener(e -> showBorrowerBooksDialog());
+        checkBookStatusMenuItem.addActionListener(e -> showBookStatusDialog());
+        manageExchangeItemsMenuItem.addActionListener(e -> showManageExchangeItems());
+        setPointsMenuItem.addActionListener(e -> showSetPointsDialog());
+        borrowBookMenuItem.addActionListener(e -> showBorrowBookDialog());
+        returnBookMenuItem.addActionListener(e -> showReturnBookDialog());
+        myBorrowedBooksMenuItem.addActionListener(e -> showMyBorrowedBooks());
+        myPointsMenuItem.addActionListener(e -> showMyPoints());
+        exchangePointsMenuItem.addActionListener(e -> showExchangePointsDialog());
+    }
+
+    private void initUI() {
+        setTitle("图书馆管理系统");
+        setSize(800, 600);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setBackground(BACKGROUND_COLOR);
+
+        // 添加登录面板
+        mainPanel.add(createLoginPanel(), "login");
+        mainPanel.setBackground(BACKGROUND_COLOR);
+
+        // 创建菜单栏
+        JMenuBar menuBar = new JMenuBar();
+
+        JMenu adminMenu = new JMenu("管理员功能");
+        adminMenu.add(addBookMenuItem);
+        adminMenu.add(removeBookMenuItem);
+        adminMenu.add(registerBorrowerMenuItem);
+        adminMenu.add(listAllBooksMenuItem);
+        adminMenu.add(listAllBorrowersMenuItem);
+        adminMenu.add(checkBorrowerBooksMenuItem);
+        adminMenu.add(checkBookStatusMenuItem);
+        adminMenu.add(manageExchangeItemsMenuItem);
+        adminMenu.add(setPointsMenuItem);
+
+        JMenu borrowerMenu = new JMenu("借阅者功能");
+        borrowerMenu.add(borrowBookMenuItem);
+        borrowerMenu.add(returnBookMenuItem);
+        borrowerMenu.add(myBorrowedBooksMenuItem);
+        borrowerMenu.add(myPointsMenuItem);
+        borrowerMenu.add(exchangePointsMenuItem);
+
+        JMenu helpMenu = new JMenu("帮助");
+        JMenuItem aboutItem = new JMenuItem("关于");
+        aboutItem.addActionListener(e -> showAboutDialog());
+        helpMenu.add(aboutItem);
+
+        menuBar.add(adminMenu);
+        menuBar.add(borrowerMenu);
+        menuBar.add(helpMenu);
+        setJMenuBar(menuBar);
+
+        add(mainPanel);
+        cardLayout.show(mainPanel, "login");
+
+        // 初始化状态
+        updateUI();
+    }
+
+    private JPanel createLoginPanel() {
+        JPanel loginPanel = new JPanel(null);
+        loginPanel.setBackground(BACKGROUND_COLOR);
+
+        // 创建标题
+        JLabel titleLabel = new JLabel("图书馆管理系统");
+        titleLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 28));
+        titleLabel.setForeground(PRIMARY_COLOR);
+        titleLabel.setBounds(300, 100, 200, 40);
+        loginPanel.add(titleLabel);
+
+        // 创建用户类型选择
+        JLabel userTypeLabel = new JLabel("用户类型:");
+        userTypeLabel.setBounds(250, 200, 100, 30);
+        loginPanel.add(userTypeLabel);
+
+        String[] userTypes = {"管理员", "借阅者"};
+        userTypeComboBox = new JComboBox<>(userTypes);
+        userTypeComboBox.setBounds(350, 200, 150, 30);
+        userTypeComboBox.setBackground(PANEL_BACKGROUND);
+        loginPanel.add(userTypeComboBox);
+
+        // 创建ID输入框
+        JLabel idLabel = new JLabel("ID:");
+        idLabel.setBounds(250, 250, 100, 30);
+        loginPanel.add(idLabel);
+
+        idField = new JTextField();
+        idField.setBounds(350, 250, 150, 30);
+        loginPanel.add(idField);
+
+        // 创建密码输入框
+        JLabel passwordLabel = new JLabel("密码:");
+        passwordLabel.setBounds(250, 300, 100, 30);
+        loginPanel.add(passwordLabel);
+
+        passwordField = new JPasswordField();
+        passwordField.setBounds(350, 300, 150, 30);
+        loginPanel.add(passwordField);
+
+        // 创建登录按钮
+        JButton loginButton = new JButton("登录");
+        loginButton.setBackground(PRIMARY_COLOR);
+        loginButton.setForeground(Color.WHITE);
+        loginButton.setBorder(new RoundBorder(PRIMARY_COLOR, 5));
+        loginButton.setBounds(320, 360, 120, 40);
+        loginButton.addActionListener(e -> login());
+        loginPanel.add(loginButton);
+
+        // 创建状态标签
+        statusLabel = new JLabel("请输入登录信息");
+        statusLabel.setForeground(TEXT_COLOR);
+        statusLabel.setBounds(300, 420, 200, 30);
+        statusLabel.setHorizontalAlignment(JLabel.CENTER);
+        loginPanel.add(statusLabel);
+
+        // 创建进度条
+        progressBar = new JProgressBar();
+        progressBar.setBounds(250, 460, 300, 15);
+        progressBar.setStringPainted(true);
+        progressBar.setVisible(false);
+        loginPanel.add(progressBar);
+
+        return loginPanel;
+    }
+
+    private void login() {
+        String userId = idField.getText().trim();
+        String password = new String(passwordField.getPassword());
+        String userType = (String) userTypeComboBox.getSelectedItem();
+
+        if (userId.isEmpty() || password.isEmpty()) {
+            statusLabel.setText("ID和密码不能为空");
+            statusLabel.setForeground(ERROR_COLOR);
+            return;
+        }
+
+        statusLabel.setText("正在验证...");
+        statusLabel.setForeground(PRIMARY_COLOR);
+        progressBar.setVisible(true);
+        progressBar.setValue(0);
+
+        // 模拟登录过程
+        new Thread(() -> {
+            try {
+                for (int i = 0; i <= 100; i++) {
+                    TimeUnit.MILLISECONDS.sleep(20);
+                    progressBar.setValue(i);
+                }
+
+                boolean authenticated = false;
+                if ("管理员".equals(userType)) {
+                    authenticated = library.authenticateAdmin(userId, password);
+                    isAdmin = authenticated;
+                } else {
+                    authenticated = library.authenticateBorrower(userId, password);
+                    isAdmin = false;
+                }
+
+                if (authenticated) {
+                    currentUserId = userId;
+                    SwingUtilities.invokeLater(() -> {
+                        statusLabel.setText("登录成功，正在加载...");
+                        statusLabel.setForeground(SECONDARY_COLOR);
+                        updateUI();
+                        showWelcomeMessage();
+                    });
+                } else {
+                    SwingUtilities.invokeLater(() -> {
+                        statusLabel.setText("登录失败，ID或密码错误");
+                        statusLabel.setForeground(ERROR_COLOR);
+                        progressBar.setVisible(false);
+                    });
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }).start();
+    }
+
+    private void updateUI() {
+        // 启用/禁用菜单项
+        addBookMenuItem.setEnabled(isAdmin);
+        removeBookMenuItem.setEnabled(isAdmin);
+        registerBorrowerMenuItem.setEnabled(isAdmin);
+        listAllBooksMenuItem.setEnabled(true);
+        listAllBorrowersMenuItem.setEnabled(isAdmin);
+        checkBorrowerBooksMenuItem.setEnabled(isAdmin);
+        checkBookStatusMenuItem.setEnabled(true);
+        manageExchangeItemsMenuItem.setEnabled(isAdmin);
+        setPointsMenuItem.setEnabled(isAdmin);
+        borrowBookMenuItem.setEnabled(!isAdmin);
+        returnBookMenuItem.setEnabled(!isAdmin);
+        myBorrowedBooksMenuItem.setEnabled(!isAdmin);
+        myPointsMenuItem.setEnabled(!isAdmin);
+        exchangePointsMenuItem.setEnabled(!isAdmin);
+
+        // 更新标题
+        if (currentUserId != null) {
+            String userTypeName = isAdmin ? "管理员" : "借阅者";
+            setTitle("图书馆管理系统 - 当前用户: " + currentUserId + " (" + userTypeName + ")");
+        } else {
+            setTitle("图书馆管理系统");
+        }
+    }
+
+    private void showWelcomeMessage() {
+        String message;
+        if (isAdmin) {
+            Admin admin = library.getAdminInfo(currentUserId);
+            message = "欢迎，管理员 " + admin.getName() + "！";
+        } else {
+            Borrower borrower = library.getBorrowerInfo(currentUserId);
+            message = "欢迎，借阅者 " + borrower.getName() + "！\n您当前的积分: " + borrower.getPoints();
+        }
+
+        JOptionPane.showMessageDialog(this, message, "登录成功", JOptionPane.INFORMATION_MESSAGE);
+        progressBar.setVisible(false);
+    }
+
+    private void showAddBookDialog() {
+        JDialog dialog = new JDialog(this, "添加图书", true);
+        dialog.setSize(400, 300);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(null);
+        dialog.getContentPane().setBackground(BACKGROUND_COLOR);
+
+        JLabel isbnLabel = new JLabel("ISBN:");
+        isbnLabel.setBounds(50, 50, 80, 30);
+        dialog.add(isbnLabel);
+
+        JTextField isbnField = new JTextField();
+        isbnField.setBounds(150, 50, 200, 30);
+        dialog.add(isbnField);
+
+        JLabel titleLabel = new JLabel("书名:");
+        titleLabel.setBounds(50, 100, 80, 30);
+        dialog.add(titleLabel);
+
+        JTextField titleField = new JTextField();
+        titleField.setBounds(150, 100, 200, 30);
+        dialog.add(titleField);
+
+        JLabel authorLabel = new JLabel("作者:");
+        authorLabel.setBounds(50, 150, 80, 30);
+        dialog.add(authorLabel);
+
+        JTextField authorField = new JTextField();
+        authorField.setBounds(150, 150, 200, 30);
+        dialog.add(authorField);
+
+        JButton addButton = new JButton("添加");
+        addButton.setBackground(PRIMARY_COLOR);
+        addButton.setForeground(Color.WHITE);
+        addButton.setBorder(new RoundBorder(PRIMARY_COLOR, 5));
+        addButton.setBounds(150, 200, 100, 30);
+        addButton.addActionListener(e -> {
+            String isbn = isbnField.getText().trim();
+            String title = titleField.getText().trim();
+            String author = authorField.getText().trim();
+
+            if (isbn.isEmpty() || title.isEmpty() || author.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "请填写完整信息", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (library.addBook(isbn, title, author, currentUserId)) {
+                JOptionPane.showMessageDialog(dialog, "图书添加成功", "成功", JOptionPane.INFORMATION_MESSAGE);
+                dialog.dispose();
+            } else {
+                JOptionPane.showMessageDialog(dialog, "图书添加失败，可能ISBN已存在或权限不足", "错误", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        dialog.add(addButton);
+
+        dialog.setVisible(true);
+    }
+
+    private void showRemoveBookDialog() {
+        JDialog dialog = new JDialog(this, "移除图书", true);
+        dialog.setSize(400, 200);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(null);
+        dialog.getContentPane().setBackground(BACKGROUND_COLOR);
+
+        JLabel isbnLabel = new JLabel("ISBN:");
+        isbnLabel.setBounds(50, 50, 80, 30);
+        dialog.add(isbnLabel);
+
+        JTextField isbnField = new JTextField();
+        isbnField.setBounds(150, 50, 200, 30);
+        dialog.add(isbnField);
+
+        JButton removeButton = new JButton("移除");
+        removeButton.setBackground(ERROR_COLOR);
+        removeButton.setForeground(Color.WHITE);
+        removeButton.setBorder(new RoundBorder(ERROR_COLOR, 5));
+        removeButton.setBounds(150, 100, 100, 30);
+        removeButton.addActionListener(e -> {
+            String isbn = isbnField.getText().trim();
+
+            if (isbn.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "请输入ISBN", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (library.removeBook(isbn, currentUserId)) {
+                JOptionPane.showMessageDialog(dialog, "图书移除成功", "成功", JOptionPane.INFORMATION_MESSAGE);
+                dialog.dispose();
+            } else {
+                JOptionPane.showMessageDialog(dialog, "图书移除失败，可能图书不存在、已借出或权限不足", "错误", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        dialog.add(removeButton);
+
+        dialog.setVisible(true);
+    }
+
+    private void showRegisterBorrowerDialog() {
+        JDialog dialog = new JDialog(this, "注册借阅者", true);
+        dialog.setSize(400, 350);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(null);
+        dialog.getContentPane().setBackground(BACKGROUND_COLOR);
+
+        JLabel idLabel = new JLabel("借阅者ID:");
+        idLabel.setBounds(50, 50, 100, 30);
+        dialog.add(idLabel);
+
+        JTextField idField = new JTextField();
+        idField.setBounds(150, 50, 200, 30);
+        dialog.add(idField);
+
+        JLabel nameLabel = new JLabel("姓名:");
+        nameLabel.setBounds(50, 100, 100, 30);
+        dialog.add(nameLabel);
+
+        JTextField nameField = new JTextField();
+        nameField.setBounds(150, 100, 200, 30);
+        dialog.add(nameField);
+
+        JLabel passwordLabel = new JLabel("密码:");
+        passwordLabel.setBounds(50, 150, 100, 30);
+        dialog.add(passwordLabel);
+
+        JPasswordField passwordField = new JPasswordField();
+        passwordField.setBounds(150, 150, 200, 30);
+        dialog.add(passwordField);
+
+        JLabel confirmPasswordLabel = new JLabel("确认密码:");
+        confirmPasswordLabel.setBounds(50, 200, 100, 30);
+        dialog.add(confirmPasswordLabel);
+
+        JPasswordField confirmPasswordField = new JPasswordField();
+        confirmPasswordField.setBounds(150, 200, 200, 30);
+        dialog.add(confirmPasswordField);
+
+        JButton registerButton = new JButton("注册");
+        registerButton.setBackground(PRIMARY_COLOR);
+        registerButton.setForeground(Color.WHITE);
+        registerButton.setBorder(new RoundBorder(PRIMARY_COLOR, 5));
+        registerButton.setBounds(150, 250, 100, 30);
+        registerButton.addActionListener(e -> {
+            String id = idField.getText().trim();
+            String name = nameField.getText().trim();
+            String password = new String(passwordField.getPassword());
+            String confirmPassword = new String(confirmPasswordField.getPassword());
+
+            if (id.isEmpty() || name.isEmpty() || password.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "请填写完整信息", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!password.equals(confirmPassword)) {
+                JOptionPane.showMessageDialog(dialog, "两次输入的密码不一致", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (library.registerBorrower(id, name, password, currentUserId)) {
+                JOptionPane.showMessageDialog(dialog, "借阅者注册成功", "成功", JOptionPane.INFORMATION_MESSAGE);
+                dialog.dispose();
+            } else {
+                JOptionPane.showMessageDialog(dialog, "借阅者注册失败，可能ID已存在或权限不足", "错误", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        dialog.add(registerButton);
+
+        dialog.setVisible(true);
+    }
+
+    private void showAllBooks() {
+        JDialog dialog = new JDialog(this, "所有图书", true);
+        dialog.setSize(700, 500);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout());
+
+        String[] columnNames = {"ISBN", "书名", "作者", "状态"};
+        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+        JTable table = new JTable(model);
+        table.setRowHeight(30);
+        table.getTableHeader().setBackground(TABLE_HEADER_COLOR);
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        dialog.add(scrollPane, BorderLayout.CENTER);
+
+        List<Book> books = library.listAllBooks();
+        for (Book book : books) {
+            Object[] row = {
+                book.getIsbn(),
+                book.getTitle(),
+                book.getAuthor(),
+                book.isBorrowed() ? "已借出" : "可借阅"
+            };
+            model.addRow(row);
+        }
+
+        dialog.setVisible(true);
+    }
+
+    private void showAllBorrowers() {
+        JDialog dialog = new JDialog(this, "所有借阅者", true);
+        dialog.setSize(700, 500);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout());
+
+        String[] columnNames = {"ID", "姓名", "积分", "借阅图书数量"};
+        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+        JTable table = new JTable(model);
+        table.setRowHeight(30);
+        table.getTableHeader().setBackground(TABLE_HEADER_COLOR);
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        dialog.add(scrollPane, BorderLayout.CENTER);
+
+        List<Borrower> borrowers = library.listAllBorrowers();
+        for (Borrower borrower : borrowers) {
+            Object[] row = {
+                borrower.getId(),
+                borrower.getName(),
+                borrower.getPoints(),
+                borrower.getBorrowedBooks().size()
+            };
+            model.addRow(row);
+        }
+
+        dialog.setVisible(true);
+    }
+
+    private void showBorrowerBooksDialog() {
+        JDialog dialog = new JDialog(this, "查看借阅者借阅情况", true);
+        dialog.setSize(400, 200);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(null);
+        dialog.getContentPane().setBackground(BACKGROUND_COLOR);
+
+        JLabel borrowerIdLabel = new JLabel("借阅者ID:");
+        borrowerIdLabel.setBounds(50, 50, 100, 30);
+        dialog.add(borrowerIdLabel);
+
+        JTextField borrowerIdField = new JTextField();
+        borrowerIdField.setBounds(150, 50, 200, 30);
+        dialog.add(borrowerIdField);
+
+                JButton checkButton = new JButton("查看");
+        checkButton.setBackground(PRIMARY_COLOR);
+        checkButton.setForeground(Color.WHITE);
+        checkButton.setBorder(new RoundBorder(PRIMARY_COLOR, 5));
+        checkButton.setBounds(150, 100, 100, 30);
+        checkButton.addActionListener(e -> {
+            String borrowerId = borrowerIdField.getText().trim();
+
+            if (borrowerId.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "请输入借阅者ID", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            Borrower borrower = library.getBorrowerInfo(borrowerId);
+            if (borrower == null) {
+                JOptionPane.showMessageDialog(dialog, "借阅者不存在", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            dialog.dispose();
+            showBorrowerBooks(borrowerId);
+        });
+        dialog.add(checkButton);
+
+        dialog.setVisible(true);
+    }
+
+    private void showBorrowerBooks(String borrowerId) {
+        Borrower borrower = library.getBorrowerInfo(borrowerId);
+        if (borrower == null) {
+            JOptionPane.showMessageDialog(this, "借阅者不存在", "错误", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JDialog dialog = new JDialog(this, "借阅者 " + borrower.getName() + " 的借阅情况", true);
+        dialog.setSize(700, 500);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout());
+
+        String[] columnNames = {"ISBN", "书名", "作者", "借阅状态"};
+        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+        JTable table = new JTable(model);
+        table.setRowHeight(30);
+        table.getTableHeader().setBackground(TABLE_HEADER_COLOR);
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        dialog.add(scrollPane, BorderLayout.CENTER);
+
+        List<Book> books = library.listBorrowedBooks(borrowerId);
+        for (Book book : books) {
+            Object[] row = {
+                book.getIsbn(),
+                book.getTitle(),
+                book.getAuthor(),
+                book.isBorrowed() ? "已借出" : "已归还"
+            };
+            model.addRow(row);
+        }
+
+        dialog.setVisible(true);
+    }
+
+    private void showBookStatusDialog() {
+        JDialog dialog = new JDialog(this, "查看图书借阅情况", true);
+        dialog.setSize(400, 200);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(null);
+        dialog.getContentPane().setBackground(BACKGROUND_COLOR);
+
+        JLabel isbnLabel = new JLabel("ISBN:");
+        isbnLabel.setBounds(50, 50, 100, 30);
+        dialog.add(isbnLabel);
+
+        JTextField isbnField = new JTextField();
+        isbnField.setBounds(150, 50, 200, 30);
+        dialog.add(isbnField);
+
+        JButton checkButton = new JButton("查看");
+        checkButton.setBackground(PRIMARY_COLOR);
+        checkButton.setForeground(Color.WHITE);
+        checkButton.setBorder(new RoundBorder(PRIMARY_COLOR, 5));
+        checkButton.setBounds(150, 100, 100, 30);
+        checkButton.addActionListener(e -> {
+            String isbn = isbnField.getText().trim();
+
+            if (isbn.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "请输入ISBN", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            Book book = library.getBookInfo(isbn);
+            if (book == null) {
+                JOptionPane.showMessageDialog(dialog, "图书不存在", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            String message = "ISBN: " + book.getIsbn() + "\n" +
+                             "书名: " + book.getTitle() + "\n" +
+                             "作者: " + book.getAuthor() + "\n" +
+                             "状态: " + (book.isBorrowed() ? "已借出" : "可借阅") + "\n";
+
+            if (book.isBorrowed()) {
+                Borrower borrower = library.getBorrowerInfo(book.getBorrowerId());
+                if (borrower != null) {
+                    message += "借阅者: " + borrower.getName() + " (ID: " + borrower.getId() + ")";
+                }
+            }
+
+            JOptionPane.showMessageDialog(dialog, message, "图书信息", JOptionPane.INFORMATION_MESSAGE);
+            dialog.dispose();
+        });
+        dialog.add(checkButton);
+
+        dialog.setVisible(true);
+    }
+
+    private void showManageExchangeItems() {
+        JDialog dialog = new JDialog(this, "管理积分兑换物品", true);
+        dialog.setSize(800, 600);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout());
+
+        // 顶部面板 - 添加物品
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topPanel.setBackground(BACKGROUND_COLOR);
+
+        JLabel itemIdLabel = new JLabel("物品ID:");
+        topPanel.add(itemIdLabel);
+
+        JTextField itemIdField = new JTextField(10);
+        topPanel.add(itemIdField);
+
+        JLabel nameLabel = new JLabel("物品名称:");
+        topPanel.add(nameLabel);
+
+        JTextField nameField = new JTextField(10);
+        topPanel.add(nameField);
+
+        JLabel pointsLabel = new JLabel("所需积分:");
+        topPanel.add(pointsLabel);
+
+        JTextField pointsField = new JTextField(5);
+        topPanel.add(pointsField);
+
+        JLabel stockLabel = new JLabel("库存:");
+        topPanel.add(stockLabel);
+
+        JTextField stockField = new JTextField(5);
+        topPanel.add(stockField);
+
+        JButton addItemButton = new JButton("添加物品");
+        addItemButton.setBackground(PRIMARY_COLOR);
+        addItemButton.setForeground(Color.WHITE);
+        addItemButton.setBorder(new RoundBorder(PRIMARY_COLOR, 5));
+        addItemButton.addActionListener(e -> {
+            String itemId = itemIdField.getText().trim();
+            String name = nameField.getText().trim();
+            String pointsStr = pointsField.getText().trim();
+            String stockStr = stockField.getText().trim();
+
+            if (itemId.isEmpty() || name.isEmpty() || pointsStr.isEmpty() || stockStr.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "请填写完整信息", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            try {
+                int points = Integer.parseInt(pointsStr);
+                int stock = Integer.parseInt(stockStr);
+
+                if (library.addExchangeItem(itemId, name, points, stock, currentUserId)) {
+                    JOptionPane.showMessageDialog(dialog, "物品添加成功", "成功", JOptionPane.INFORMATION_MESSAGE);
+                    itemIdField.setText("");
+                    nameField.setText("");
+                    pointsField.setText("");
+                    stockField.setText("");
+                    refreshExchangeItemsTable(model);
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "物品添加失败，可能ID已存在或权限不足", "错误", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(dialog, "积分和库存必须是数字", "错误", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        topPanel.add(addItemButton);
+
+        dialog.add(topPanel, BorderLayout.NORTH);
+
+        // 中间面板 - 物品表格
+        String[] columnNames = {"物品ID", "名称", "所需积分", "库存"};
+        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+        JTable table = new JTable(model);
+        table.setRowHeight(30);
+        table.getTableHeader().setBackground(TABLE_HEADER_COLOR);
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        dialog.add(scrollPane, BorderLayout.CENTER);
+
+        // 底部面板 - 操作按钮
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        bottomPanel.setBackground(BACKGROUND_COLOR);
+
+        JButton refreshButton = new JButton("刷新");
+        refreshButton.setBackground(SECONDARY_COLOR);
+        refreshButton.setForeground(Color.WHITE);
+        refreshButton.setBorder(new RoundBorder(SECONDARY_COLOR, 5));
+        refreshButton.addActionListener(e -> refreshExchangeItemsTable(model));
+        bottomPanel.add(refreshButton);
+
+        dialog.add(bottomPanel, BorderLayout.SOUTH);
+
+        // 初始化表格数据
+        refreshExchangeItemsTable(model);
+
+        dialog.setVisible(true);
+    }
+
+    private void refreshExchangeItemsTable(DefaultTableModel model) {
+        // 清空表格
+        model.setRowCount(0);
+
+        // 添加数据
+        List<ExchangeItem> items = library.listAllExchangeItems();
+        for (ExchangeItem item : items) {
+            Object[] row = {
+                item.getId(),
+                item.getName(),
+                item.getPointsRequired(),
+                item.getStock()
+            };
+            model.addRow(row);
+        }
+    }
+
+    private void showSetPointsDialog() {
+        JDialog dialog = new JDialog(this, "设置借阅积分规则", true);
+        dialog.setSize(400, 200);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(null);
+        dialog.getContentPane().setBackground(BACKGROUND_COLOR);
+
+        JLabel pointsLabel = new JLabel("每次借阅获得积分:");
+        pointsLabel.setBounds(50, 50, 150, 30);
+        dialog.add(pointsLabel);
+
+        JTextField pointsField = new JTextField(String.valueOf(library.getPointsPerBorrow()));
+        pointsField.setBounds(200, 50, 100, 30);
+        dialog.add(pointsField);
+
+        JButton setButton = new JButton("设置");
+        setButton.setBackground(PRIMARY_COLOR);
+        setButton.setForeground(Color.WHITE);
+        setButton.setBorder(new RoundBorder(PRIMARY_COLOR, 5));
+        setButton.setBounds(150, 100, 100, 30);
+        setButton.addActionListener(e -> {
+            String pointsStr = pointsField.getText().trim();
+
+            if (pointsStr.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "请输入积分值", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            try {
+                int points = Integer.parseInt(pointsStr);
+                if (points < 0) {
+                    JOptionPane.showMessageDialog(dialog, "积分值不能为负数", "错误", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                library.setPointsPerBorrow(points, currentUserId);
+                JOptionPane.showMessageDialog(dialog, "积分规则设置成功", "成功", JOptionPane.INFORMATION_MESSAGE);
+                dialog.dispose();
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(dialog, "积分值必须是数字", "错误", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        dialog.add(setButton);
+
+        dialog.setVisible(true);
+    }
+
+    private void showBorrowBookDialog() {
+        JDialog dialog = new JDialog(this, "借阅图书", true);
+        dialog.setSize(400, 250);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(null);
+        dialog.getContentPane().setBackground(BACKGROUND_COLOR);
+
+        JLabel isbnLabel = new JLabel("ISBN:");
+        isbnLabel.setBounds(50, 50, 100, 30);
+        dialog.add(isbnLabel);
+
+        JTextField isbnField = new JTextField();
+        isbnField.setBounds(150, 50, 200, 30);
+        dialog.add(isbnField);
+
+        JButton checkButton = new JButton("查询图书");
+        checkButton.setBackground(PRIMARY_COLOR);
+        checkButton.setForeground(Color.WHITE);
+        checkButton.setBorder(new RoundBorder(PRIMARY_COLOR, 5));
+        checkButton.setBounds(150, 100, 120, 30);
+        checkButton.addActionListener(e -> {
+            String isbn = isbnField.getText().trim();
+
+            if (isbn.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "请输入ISBN", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            Book book = library.getBookInfo(isbn);
+            if (book == null) {
+                JOptionPane.showMessageDialog(dialog, "图书不存在", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (book.isBorrowed()) {
+                JOptionPane.showMessageDialog(dialog, "图书已被借出", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            int confirm = JOptionPane.showConfirmDialog(dialog,
+                    "确认借阅以下图书吗？\n" +
+                    "ISBN: " + book.getIsbn() + "\n" +
+                    "书名: " + book.getTitle() + "\n" +
+                    "作者: " + book.getAuthor(),
+                    "确认借阅", JOptionPane.YES_NO_OPTION);
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                if (library.borrowBook(isbn, currentUserId)) {
+                    JOptionPane.showMessageDialog(dialog, "图书借阅成功！\n获得积分: " + library.getPointsPerBorrow(), "成功", JOptionPane.INFORMATION_MESSAGE);
+                    dialog.dispose();
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "图书借阅失败", "错误", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        dialog.add(checkButton);
+
+        dialog.setVisible(true);
+    }
+
+    private void showReturnBookDialog() {
+        JDialog dialog = new JDialog(this, "归还图书", true);
+        dialog.setSize(400, 250);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(null);
+        dialog.getContentPane().setBackground(BACKGROUND_COLOR);
+
+        JLabel isbnLabel = new JLabel("ISBN:");
+        isbnLabel.setBounds(50, 50, 100, 30);
+        dialog.add(isbnLabel);
+
+        JTextField isbnField = new JTextField();
+        isbnField.setBounds(150, 50, 200, 30);
+        dialog.add(isbnField);
+
+        JButton checkButton = new JButton("归还图书");
+        checkButton.setBackground(PRIMARY_COLOR);
+        checkButton.setForeground(Color.WHITE);
+        checkButton.setBorder(new RoundBorder(PRIMARY_COLOR, 5));
+        checkButton.setBounds(150, 100, 120, 30);
+        checkButton.addActionListener(e -> {
+            String isbn = isbnField.getText().trim();
+
+            if (isbn.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "请输入ISBN", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            Book book = library.getBookInfo(isbn);
+            if (book == null) {
+                JOptionPane.showMessageDialog(dialog, "图书不存在", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!book.isBorrowed()) {
+                JOptionPane.showMessageDialog(dialog, "图书未被借出", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!book.getBorrowerId().equals(currentUserId)) {
+                JOptionPane.showMessageDialog(dialog, "您没有借阅这本书", "错误", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            int confirm = JOptionPane.showConfirmDialog(dialog,
+                    "确认归还以下图书吗？\n" +
+                    "ISBN: " + book.getIsbn() + "\n" +
+                    "书名: " + book.getTitle() + "\n" +
+                    "作者: " + book.getAuthor(),
+                    "确认归还", JOptionPane.YES_NO_OPTION);
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                if (library.returnBook(isbn, currentUserId)) {
+                    JOptionPane.showMessageDialog(dialog, "图书归还成功！", "成功", JOptionPane.INFORMATION_MESSAGE);
+                    dialog.dispose();
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "图书归还失败", "错误", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        dialog.add(checkButton);
+
+        dialog.setVisible(true);
+    }
+
+    private void showMyBorrowedBooks() {
+        JDialog dialog = new JDialog(this, "我的借阅情况", true);
+        dialog.setSize(700, 500);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout());
+
+        String[] columnNames = {"ISBN", "书名", "作者", "借阅状态"};
+        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+        JTable table = new JTable(model);
+        table.setRowHeight(30);
+        table.getTableHeader().setBackground(TABLE_HEADER_COLOR);
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        dialog.add(scrollPane, BorderLayout.CENTER);
+
+        List<Book> books = library.listBorrowedBooks(currentUserId);
+        for (Book book : books) {
+            Object[] row = {
+                book.getIsbn(),
+                book.getTitle(),
+                book.getAuthor(),
+                book.isBorrowed() ? "已借出" : "已归还"
+            };
+            model.addRow(row);
+        }
+
+        dialog.setVisible(true);
+    }
+
+    private void showMyPoints() {
+        Borrower borrower = library.getBorrowerInfo(currentUserId);
+        if (borrower == null) {
+            JOptionPane.showMessageDialog(this, "用户不存在", "错误", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String message = "您的当前积分: " + borrower.getPoints() + "\n" +
+                         "每次借阅可获得积分: " + library.getPointsPerBorrow();
+
+        JOptionPane.showMessageDialog(this, message, "我的积分", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void showExchangePointsDialog() {
+        JDialog dialog = new JDialog(this, "积分兑换", true);
+        dialog.setSize(800, 600);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout());
+
+        // 顶部面板 - 显示当前积分
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topPanel.setBackground(BACKGROUND_COLOR);
+
+        Borrower borrower = library.getBorrowerInfo(currentUserId);
+        JLabel pointsLabel = new JLabel("当前积分: " + borrower.getPoints());
+        pointsLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
+        pointsLabel.setForeground(PRIMARY_COLOR);
+        topPanel.add(pointsLabel);
+
+        dialog.add(topPanel, BorderLayout.NORTH);
+
+        // 中间面板 - 可兑换物品表格
+        String[] columnNames = {"物品ID", "名称", "所需积分", "库存", "操作"};
+        DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 4; // 只允许编辑操作列
+            }
+
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                return columnIndex == 4 ? JButton.class : super.getColumnClass(columnIndex);
+            }
+        };
+
+        JTable table = new JTable(model) {
+            @Override
+            public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
+                Component c = super.prepareRenderer(renderer, row, column);
+                if (c instanceof JComponent) {
+                    JComponent jc = (JComponent) c;
+                    jc.setOpaque(true);
+                    if (!isCellSelected(row, column)) {
+                        jc.setBackground(row % 2 == 0 ? Color.WHITE : new Color(245, 245, 245));
+                    }
+                }
+                return c;
+            }
+        };
+
+        table.setRowHeight(30);
+        table.getTableHeader().setBackground(TABLE_HEADER_COLOR);
+
+        // 添加数据
+        List<ExchangeItem> items = library.listAllExchangeItems();
+        for (ExchangeItem item : items) {
+            JButton exchangeButton = new JButton("兑换");
+            exchangeButton.setBackground(PRIMARY_COLOR);
+            exchangeButton.setForeground(Color.WHITE);
+            exchangeButton.setBorder(new RoundBorder(PRIMARY_COLOR, 5));
+            exchangeButton.addActionListener(e -> {
+                if (item.getStock() <= 0) {
+                    JOptionPane.showMessageDialog(dialog, "该物品已无库存", "错误", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                if (borrower.getPoints() < item.getPointsRequired()) {
+                    JOptionPane.showMessageDialog(dialog, "积分不足，无法兑换", "错误", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                int confirm = JOptionPane.showConfirmDialog(dialog,
+                        "确认使用 " + item.getPointsRequired() + " 积分兑换 " + item.getName() + " 吗？",
+                        "确认兑换", JOptionPane.YES_NO_OPTION);
+
+                if (confirm == JOptionPane.YES_OPTION) {
+                    if (library.exchangePoints(item.getId(), currentUserId)) {
+                        JOptionPane.showMessageDialog(dialog, "兑换成功！", "成功", JOptionPane.INFORMATION_MESSAGE);
+                        refreshExchangeItemsTable(model);
+                        pointsLabel.setText("当前积分: " + library.getBorrowerInfo(currentUserId).getPoints());
+                    } else {
+                        JOptionPane.showMessageDialog(dialog, "兑换失败", "错误", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            });
+
+            Object[] row = {
+                item.getId(),
+                item.getName(),
+                item.getPointsRequired(),
+                item.getStock(),
+                exchangeButton
+            };
+            model.addRow(row);
+        }
+
+        // 自定义操作列的渲染器和编辑器
+        table.getColumnModel().getColumn(4).setCellRenderer(new TableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                return (Component) value;
+            }
+        });
+
+        table.getColumnModel().getColumn(4).setCellEditor(new DefaultCellEditor(new JTextField()) {
+            @Override
+            public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+                return (Component) value;
+            }
+        });
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        dialog.add(scrollPane, BorderLayout.CENTER);
+
+        dialog.setVisible(true);
+    }
+
+    private void showAboutDialog() {
+        JDialog dialog = new JDialog(this, "关于", true);
+        dialog.setSize(400, 300);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout());
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setBackground(PANEL_BACKGROUND);
+
+        JLabel titleLabel = new JLabel("图书馆管理系统");
+        titleLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 20));
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(titleLabel);
+
+        panel.add(Box.createVerticalStrut(20));
+
+        JLabel versionLabel = new JLabel("版本: 1.0.0");
+        versionLabel.setFont(new Font("Microsoft YaHei", Font.PLAIN, 14));
+        versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(versionLabel);
+
+        JLabel copyrightLabel = new JLabel("© 2023 图书馆管理系统 版权所有");
+        copyrightLabel.setFont(new Font("Microsoft YaHei", Font.PLAIN, 14));
+        copyrightLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(copyrightLabel);
+
+        panel.add(Box.createVerticalStrut(20));
+
+        JTextArea descriptionArea = new JTextArea("本系统用于图书馆的日常管理，包括图书借阅、归还、积分兑换等功能。\n" +
+                "支持管理员和借阅者两种角色，提供友好的图形界面。");
+        descriptionArea.setFont(new Font("Microsoft YaHei", Font.PLAIN, 14));
+        descriptionArea.setEditable(false);
+        descriptionArea.setLineWrap(true);
+        descriptionArea.setWrapStyleWord(true);
+        descriptionArea.setBackground(PANEL_BACKGROUND);
+        panel.add(descriptionArea);
+
+        dialog.add(panel, BorderLayout.CENTER);
+
+        JButton closeButton = new JButton("关闭");
+        closeButton.setBackground(PRIMARY_COLOR);
+        closeButton.setForeground(Color.WHITE);
+        closeButton.setBorder(new RoundBorder(PRIMARY_COLOR, 5));
+        closeButton.addActionListener(e -> dialog.dispose());
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(closeButton);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.setVisible(true);
+    }
+
+    private void initLibraryData() {
+        // 添加一些测试数据
+        library.addBook("ISBN001", "Java编程思想", "Bruce Eckel", "admin1");
+        library.addBook("ISBN002", "Effective Java", "Joshua Bloch", "admin1");
+        library.addBook("ISBN003", "Python数据分析", "Wes McKinney", "admin1");
+        library.addBook("ISBN004", "数据结构与算法分析", "Mark Allen Weiss", "admin1");
+        library.addBook("ISBN005", "计算机网络", "Andrew S. Tanenbaum", "admin1");
+
+        // 添加测试借阅者
+        library.registerBorrower("borrower001", "张三", "123456", "admin1");
+        library.registerBorrower("borrower002", "李四", "123456", "admin1");
+
+        // 模拟借阅
+        library.borrowBook("ISBN001", "borrower001");
+        library.borrowBook("ISBN003", "borrower002");
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            LibrarySystemGUI app = new LibrarySystemGUI();
+            app.setVisible(true);
+        });
+    }
+}
