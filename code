@@ -1,0 +1,390 @@
+class Book {
+    private String isbn;
+    private String title;
+    private String author;
+    private boolean isBorrowed;
+    private String borrowerId;
+
+    public Book(String isbn, String title, String author) {
+        this.isbn = isbn;
+        this.title = title;
+        this.author = author;
+        this.isBorrowed = false;
+        this.borrowerId = null;
+    }
+
+    public String getIsbn() {
+        return isbn;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public boolean isBorrowed() {
+        return isBorrowed;
+    }
+
+    public void setBorrowed(boolean borrowed) {
+        isBorrowed = borrowed;
+    }
+
+    public String getBorrowerId() {
+        return borrowerId;
+    }
+
+    public void setBorrowerId(String borrowerId) {
+        this.borrowerId = borrowerId;
+    }
+
+    @Override
+    public String toString() {
+        return "ISBN: " + isbn + ", 书名: " + title + ", 作者: " + author +
+                ", 状态: " + (isBorrowed ? "已借出" : "可借阅");
+    }
+}
+class Borrower {
+    private String id;
+    private String name;
+    private String password;
+    private List<String> borrowedBooks;
+    private int points;
+
+    public Borrower(String id, String name, String password) {
+        this.id = id;
+        this.name = name;
+        this.password = password;
+        this.borrowedBooks = new ArrayList<>();
+        this.points = 0;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public List<String> getBorrowedBooks() {
+        return borrowedBooks;
+    }
+
+    public int getPoints() {
+        return points;
+    }
+
+    public void addPoints(int points) {
+        this.points += points;
+    }
+
+    public boolean usePoints(int points) {
+        if (this.points >= points) {
+            this.points -= points;
+            return true;
+        }
+        return false;
+    }
+
+    public void borrowBook(String isbn) {
+        borrowedBooks.add(isbn);
+    }
+
+    public void returnBook(String isbn) {
+        borrowedBooks.remove(isbn);
+    }
+
+    @Override
+    public String toString() {
+        return "ID: " + id + ", 姓名: " + name + ", 积分: " + points +
+                ", 借阅图书数量: " + borrowedBooks.size();
+    }
+}
+class Admin {
+    private String id;
+    private String name;
+    private String password;
+
+    public Admin(String id, String name, String password) {
+        this.id = id;
+        this.name = name;
+        this.password = password;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    @Override
+    public String toString() {
+        return "ID: " + id + ", 姓名: " + name;
+    }
+}
+class ExchangeItem {
+    private String id;
+    private String name;
+    private int pointsRequired;
+    private int stock;
+
+    public ExchangeItem(String id, String name, int pointsRequired, int stock) {
+        this.id = id;
+        this.name = name;
+        this.pointsRequired = pointsRequired;
+        this.stock = stock;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getPointsRequired() {
+        return pointsRequired;
+    }
+
+    public int getStock() {
+        return stock;
+    }
+
+    public boolean decreaseStock() {
+        if (stock > 0) {
+            stock--;
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        return "ID: " + id + ", 名称: " + name + ", 所需积分: " + pointsRequired + ", 库存: " + stock;
+    }
+}
+class Library {
+    private Map<String, Book> books;
+    private Map<String, Borrower> borrowers;
+    private Map<String, Admin> admins;
+    private Map<String, ExchangeItem> exchangeItems;
+    private int pointsPerBorrow;
+
+    public Library() {
+        this.books = new HashMap<>();
+        this.borrowers = new HashMap<>();
+        this.admins = new HashMap<>();
+        this.exchangeItems = new HashMap<>();
+        this.pointsPerBorrow = 10;
+
+        // 初始化默认管理员
+        registerAdmin("admin1", "系统管理员", "admin123");
+
+        // 初始化默认兑换物品
+        initDefaultExchangeItems();
+    }
+
+    private void initDefaultExchangeItems() {
+        exchangeItems.put("ITEM001", new ExchangeItem("ITEM001", "5kg大米", 500, 10));
+        exchangeItems.put("ITEM002", new ExchangeItem("ITEM002", "10枚鸡蛋", 200, 20));
+        exchangeItems.put("ITEM003", new ExchangeItem("ITEM003", "洗衣液", 300, 15));
+    }
+
+    public boolean addBook(String isbn, String title, String author, String adminId) {
+        if (!admins.containsKey(adminId)) {
+            return false;
+        }
+        if (books.containsKey(isbn)) {
+            return false;
+        }
+        books.put(isbn, new Book(isbn, title, author));
+        return true;
+    }
+
+    public boolean removeBook(String isbn, String adminId) {
+        if (!admins.containsKey(adminId)) {
+            return false;
+        }
+        if (!books.containsKey(isbn)) {
+            return false;
+        }
+        if (books.get(isbn).isBorrowed()) {
+            return false;
+        }
+        books.remove(isbn);
+        return true;
+    }
+
+    public boolean registerBorrower(String borrowerId, String name, String password, String adminId) {
+        if (!admins.containsKey(adminId)) {
+            return false;
+        }
+        if (borrowers.containsKey(borrowerId)) {
+            return false;
+        }
+        borrowers.put(borrowerId, new Borrower(borrowerId, name, password));
+        return true;
+    }
+
+    public boolean registerAdmin(String adminId, String name, String password) {
+        if (admins.containsKey(adminId)) {
+            return false;
+        }
+        admins.put(adminId, new Admin(adminId, name, password));
+        return true;
+    }
+
+    public boolean borrowBook(String isbn, String borrowerId) {
+        if (!borrowers.containsKey(borrowerId)) {
+            return false;
+        }
+        if (!books.containsKey(isbn)) {
+            return false;
+        }
+        if (books.get(isbn).isBorrowed()) {
+            return false;
+        }
+
+        Book book = books.get(isbn);
+        book.setBorrowed(true);
+        book.setBorrowerId(borrowerId);
+        borrowers.get(borrowerId).borrowBook(isbn);
+        borrowers.get(borrowerId).addPoints(pointsPerBorrow);
+        return true;
+    }
+
+    public boolean returnBook(String isbn, String borrowerId) {
+        if (!borrowers.containsKey(borrowerId)) {
+            return false;
+        }
+        if (!books.containsKey(isbn)) {
+            return false;
+        }
+        if (!books.get(isbn).isBorrowed()) {
+            return false;
+        }
+        if (!books.get(isbn).getBorrowerId().equals(borrowerId)) {
+            return false;
+        }
+
+        Book book = books.get(isbn);
+        book.setBorrowed(false);
+        book.setBorrowerId(null);
+        borrowers.get(borrowerId).returnBook(isbn);
+        return true;
+    }
+
+    public boolean exchangePoints(String itemId, String borrowerId) {
+        if (!borrowers.containsKey(borrowerId)) {
+            return false;
+        }
+
+        if (!exchangeItems.containsKey(itemId)) {
+            return false;
+        }
+
+        ExchangeItem item = exchangeItems.get(itemId);
+        Borrower borrower = borrowers.get(borrowerId);
+
+        if (item.getStock() <= 0) {
+            return false;
+        }
+
+        if (borrower.getPoints() < item.getPointsRequired()) {
+            return false;
+        }
+
+        borrower.usePoints(item.getPointsRequired());
+        item.decreaseStock();
+        return true;
+    }
+
+    public Borrower getBorrowerInfo(String borrowerId) {
+        return borrowers.get(borrowerId);
+    }
+
+    public Book getBookInfo(String isbn) {
+        return books.get(isbn);
+    }
+
+    public List<Book> listBorrowedBooks(String borrowerId) {
+        List<Book> borrowedBooks = new ArrayList<>();
+        Borrower borrower = getBorrowerInfo(borrowerId);
+        if (borrower == null) {
+            return borrowedBooks;
+        }
+        for (String isbn : borrower.getBorrowedBooks()) {
+            Book book = getBookInfo(isbn);
+            if (book != null) {
+                borrowedBooks.add(book);
+            }
+        }
+        return borrowedBooks;
+    }
+
+    public List<Book> listAllBooks() {
+        return new ArrayList<>(books.values());
+    }
+
+    public List<Borrower> listAllBorrowers() {
+        return new ArrayList<>(borrowers.values());
+    }
+
+    public boolean authenticateAdmin(String adminId, String password) {
+        Admin admin = admins.get(adminId);
+        return admin != null && admin.getPassword().equals(password);
+    }
+
+    public boolean authenticateBorrower(String borrowerId, String password) {
+        Borrower borrower = borrowers.get(borrowerId);
+        return borrower != null && borrower.getPassword().equals(password);
+    }
+
+    public Admin getAdminInfo(String adminId) {
+        return admins.get(adminId);
+    }
+
+    public List<ExchangeItem> listAllExchangeItems() {
+        return new ArrayList<>(exchangeItems.values());
+    }
+
+    public boolean addExchangeItem(String itemId, String name, int pointsRequired, int stock, String adminId) {
+        if (!admins.containsKey(adminId)) {
+            return false;
+        }
+
+        if (exchangeItems.containsKey(itemId)) {
+            return false;
+        }
+
+        exchangeItems.put(itemId, new ExchangeItem(itemId, name, pointsRequired, stock));
+        return true;
+    }
+
+    public void setPointsPerBorrow(int points, String adminId) {
+        if (!admins.containsKey(adminId)) {
+            return;
+        }
+
+        this.pointsPerBorrow = points;
+    }
+
+    public int getPointsPerBorrow() {
+        return pointsPerBorrow;
+    }
+}
